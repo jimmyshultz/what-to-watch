@@ -21,7 +21,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS — allow local development and future Vercel deployment
+# CORS — allow local development and future Vercel deployment.
+# Phase 4 TODO: add the Vercel production domain (and any preview-URL pattern)
+# before deploying. The Cloud Run service must accept the frontend's origin.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
