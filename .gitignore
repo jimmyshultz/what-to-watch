@@ -33,3 +33,6 @@ Thumbs.db
 node_modules/
 .next/
 out/
+
+# Claude Code — track shared config (launch.json) but not per-machine settings
+.claude/settings.local.json
