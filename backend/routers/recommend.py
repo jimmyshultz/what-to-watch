@@ -1,5 +1,6 @@
 """Recommendation endpoint: /api/recommend."""
 
+import logging
 import re
 
 from fastapi import APIRouter, HTTPException
@@ -8,6 +9,7 @@ from models.schemas import RecommendRequest, RecommendResponse
 from services.rag_pipeline import get_recommendations
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Patterns that suggest prompt injection attempts
@@ -58,10 +60,12 @@ async def recommend(request: RecommendRequest) -> RecommendResponse:
         )
 
     try:
-        response = await get_recommendations(request)
-        return response
-    except Exception as e:
+        return await get_recommendations(request)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Recommendation pipeline failed")
         raise HTTPException(
             status_code=500,
-            detail=f"An error occurred while generating recommendations: {str(e)}",
+            detail="An error occurred while generating recommendations.",
         )
