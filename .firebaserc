@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "default": "what-to-watch-chat"
+  },
   "targets": {},
   "etags": {}
 }
