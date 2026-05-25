@@ -7,9 +7,9 @@ Suitable for single-instance Cloud Run deployment.
 import time
 from collections import defaultdict
 
-from fastapi import Request, HTTPException
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 
 # Rate limit configuration
@@ -53,6 +53,11 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         if not request.url.path.startswith("/api/recommend"):
             return await call_next(request)
 
+        # Don't count CORS preflights against the user's quota — they're
+        # browser-initiated and don't actually invoke the RAG pipeline.
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         now = time.time()
         client_ip = self._get_client_ip(request)
 
@@ -64,20 +69,34 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         # Get all request timestamps for this IP
         timestamps = self._requests[client_ip]
 
-        # Check window limit (10 requests per 10 minutes)
+        # Check window limit (10 requests per 10 minutes).
+        # NOTE: return a JSONResponse directly rather than raising
+        # HTTPException — middleware runs OUTSIDE FastAPI's exception-handler
+        # stack, so raised HTTPExceptions bubble to ServerErrorMiddleware
+        # and surface as 500s instead of 429s.
         recent_window = [t for t in timestamps if now - t < WINDOW_SECONDS]
         if len(recent_window) >= MAX_REQUESTS_PER_WINDOW:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=429,
-                detail=f"Rate limit exceeded: max {MAX_REQUESTS_PER_WINDOW} requests per {WINDOW_SECONDS // 60} minutes.",
+                content={
+                    "detail": (
+                        f"Rate limit exceeded: max {MAX_REQUESTS_PER_WINDOW} "
+                        f"requests per {WINDOW_SECONDS // 60} minutes."
+                    )
+                },
             )
 
         # Check daily limit (50 requests per day)
         recent_day = [t for t in timestamps if now - t < DAY_SECONDS]
         if len(recent_day) >= MAX_REQUESTS_PER_DAY:
-            raise HTTPException(
+            return JSONResponse(
                 status_code=429,
-                detail=f"Daily rate limit exceeded: max {MAX_REQUESTS_PER_DAY} requests per day.",
+                content={
+                    "detail": (
+                        f"Daily rate limit exceeded: max "
+                        f"{MAX_REQUESTS_PER_DAY} requests per day."
+                    )
+                },
             )
 
         # Record this request

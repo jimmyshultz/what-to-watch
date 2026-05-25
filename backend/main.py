@@ -21,12 +21,12 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS — allow local development and future Vercel deployment.
-# Phase 4 TODO: add the Vercel production domain (and any preview-URL pattern)
-# before deploying. The Cloud Run service must accept the frontend's origin.
+# CORS — Vercel production + local dev only. Preview deployments are
+# intentionally excluded; test previews against a local backend.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://what-to-watch-jimmyshultz-jimmy-shultzs-projects.vercel.app",
         "http://localhost:3000",  # Next.js dev server
         "http://127.0.0.1:3000",
     ],
